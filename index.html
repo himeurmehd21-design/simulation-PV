@@ -98,7 +98,20 @@ function update(){
  $('d0').textContent=fmt(now);$('d20').textContent=fmt(plus(now,20));$('d180').textContent=fmt(plus(now,200));$('d230').textContent=fmt(plus(now,230));
  for(let y=2027;y<=2031;y++)$('f'+y).textContent=eur(monthly*Math.pow(1.1,y-2026));
  $('gain').textContent=eur(reportSavings);$('credit').textContent=eur(credit);$('creditDetail').textContent=eur(loan)+' de crédit + '+eur(subscription)+' d’abonnement MyLight';$('effort').textContent=eur(effort);$('monthsCovered').textContent=effort>0?(reportSavings/effort).toLocaleString('fr-FR',{maximumFractionDigits:1})+' mois':'Aucun effort à financer';$('effortMonths').textContent=effort>0?'Les économies de 6 mois représentent '+(reportSavings/effort).toLocaleString('fr-FR',{maximumFractionDigits:1})+' mois d’effort (économies des 6 mois ÷ effort mensuel), selon l’hypothèse que ces mensualités ne seront jamais dues.':'L’effort mensuel est nul ou négatif : aucun mois d’effort à compenser. Les économies des 6 mois sont calculées séparément.';
- const W=1050,H=290,energy=Array.from({length:15},(_,i)=>monthly*Math.pow(1.1,i)),cr=Array(15).fill(credit),max=Math.max(...energy,credit)*1.15+1,eg=svgLine(energy,W,H,0,max),cg=svgLine(cr,W,H,0,max);
+ // Pour le graphique uniquement : les économies des six mois couvrent l'effort
+ // mensuel à compter de 2027. Chaque point bleu est la moyenne des 12 mois de l'année.
+ let reserve=reportSavings;
+ const graphEnergy=Array.from({length:15},(_,i)=>monthly*Math.pow(1.1,i+1));
+ const graphCredit=Array.from({length:15},()=>{
+   let paid=0;
+   for(let m=0;m<12;m++){
+     const used=effort>0?Math.min(effort,reserve):0;
+     reserve=Math.max(0,reserve-used);
+     paid+=credit-used;
+   }
+   return paid/12;
+ });
+ const W=1050,H=290,max=Math.max(...graphEnergy,...graphCredit)*1.15+1,eg=svgLine(graphEnergy,W,H,0,max),cg=svgLine(graphCredit,W,H,0,max);
  let es=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des mensualités avec échelle en euros sur l’axe vertical">`;
  const ticks=5;
  for(let j=0;j<=ticks;j++){
@@ -106,13 +119,10 @@ function update(){
    es+=`<line x1="80" y1="${y}" x2="${W-25}" y2="${y}" stroke="#dce3e9" stroke-width="1"/><text x="69" y="${y+5}" text-anchor="end" font-size="13" fill="#111">${Math.round(value).toLocaleString('fr-FR')} €</text>`;
  }
  es+=`<path d="${eg.line}" fill="none" stroke="#df8a36" stroke-width="4"/><path d="${cg.line}" fill="none" stroke="#197ca9" stroke-width="4"/>`;
- for(let i=0;i<15;i++)es+=`<text x="${eg.xx(i)}" y="${H-15}" text-anchor="middle" font-size="13" fill="#111">${2026+i}</text>`;
- es+=`</svg><div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#111"><span><b style="color:#df8a36">━</b> Mensualité fournisseur d’électricité</span><span><b style="color:#197ca9">━</b> Crédit solaire + abonnement MyLight</span></div>`;
+ for(let i=0;i<15;i++)es+=`<text x="${eg.xx(i)}" y="${H-15}" text-anchor="middle" font-size="13" fill="#111">${2027+i}</text>`;
+ es+=`</svg><div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#111"><span><b style="color:#df8a36">━</b> Mensualité fournisseur d’électricité</span><span><b style="color:#197ca9">━</b> Crédit + abonnement après prise en charge de l’effort par les économies des 6 mois</span></div>`;
+ es+=`<p class="note" style="text-align:center;margin:10px 0 0">Courbe bleue : moyenne mensuelle par année, après utilisation des économies des 6 mois pour couvrir l’effort. Une fois la réserve épuisée, le montant redevient crédit + abonnement. Cette prise en charge est une simulation de budget, pas une réduction des prélèvements du prêteur.</p>`;
  $('energychart').innerHTML=es;
  let totalEnergy=0,totalCredit=0,html='';for(let i=0;i<15;i++){let e=energy[i]*11,c=credit*12;totalEnergy+=e;totalCredit+=c;html+=`<tr><td>${2026+i}</td><td>${eur(e)}</td><td>${eur(c)}</td></tr>`}
  $('annualrows').innerHTML=html;$('totalrow').innerHTML=`<tr style="font-weight:bold;background:#e8f2f8"><td>TOTAL 15 ANS</td><td>${eur(totalEnergy)}</td><td>${eur(totalCredit)}</td></tr>`;
- $('without').textContent=eur(totalEnergy);$('with').textContent=eur(totalCredit);$('difference').textContent=eur(totalEnergy-totalCredit);
-}
-function reveal(){if($('showSimulation').disabled)return;const btn=$('showSimulation');btn.disabled=true;btn.textContent='Préparation de la simulation…';setTimeout(()=>{document.querySelector('.sheet').classList.add('ready');$('annual').textContent=eur(Number($('energy').value)*11);document.querySelectorAll('.deferred').forEach(el=>el.classList.remove('deferred-hidden'));btn.textContent='Calcul des mensualités…';setTimeout(()=>{$('results').className='results-visible';btn.textContent='Actualiser la simulation';btn.disabled=false;},1100)},850)}
-$('showSimulation').addEventListener('click',reveal);['energy','pac','subscription'].forEach(id=>$(id).addEventListener('input',update));update();
-</script></body></html>
+ $('without').textC
