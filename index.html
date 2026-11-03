@@ -79,7 +79,7 @@ body,.page,h1,h2,.hdr,.cell,.amount,.date,.form,.note,.timeline-title,.summary,.
 <div class="cell deferred deferred-hidden hdr" style="grid-column:2;grid-row:7">NOUVELLES MENSUALITÉS À VENIR**</div>
 <div class="cell deferred deferred-hidden hdr" style="grid-column:3;grid-row:6">2027</div><div class="cell deferred deferred-hidden hdr" style="grid-column:4;grid-row:6">2028</div><div class="cell deferred deferred-hidden hdr" style="grid-column:5;grid-row:6">2029</div><div class="cell deferred deferred-hidden hdr" style="grid-column:6;grid-row:6">2030</div><div class="cell deferred deferred-hidden hdr" style="grid-column:7;grid-row:6">2031</div>
 <div class="cell deferred deferred-hidden amount blue" style="grid-column:3;grid-row:7" id="f2027"></div><div class="cell deferred deferred-hidden amount blue" style="grid-column:4;grid-row:7" id="f2028"></div><div class="cell deferred deferred-hidden amount blue" style="grid-column:5;grid-row:7" id="f2029"></div><div class="cell deferred deferred-hidden amount blue" style="grid-column:6;grid-row:7" id="f2030"></div><div class="cell deferred deferred-hidden amount blue" style="grid-column:7;grid-row:7" id="f2031"></div>
-</div></div><div class="actions"><button id="showSimulation" class="action-btn" type="button" disabled>Afficher la simulation complète</button></div>
+</div></div><div class="actions"><button id="showSimulation" class="action-btn" type="button">Afficher la simulation complète</button></div>
 <div id="exportActions" class="export-actions"><button type="button" id="printSimulation">Imprimer / Enregistrer en PDF</button><button type="button" class="secondary" id="downloadSimulation">Télécharger ma simulation</button></div>
 <div id="results" class="results-hidden"><div class="timeline-title">Frise de financement — photovoltaïque</div><div class="timeline-wrap"><svg viewBox="0 0 1250 265" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto" role="img" aria-label="Échéancier Excel : validation, installation, réception des aides, début du crédit et mensualité après injection des aides">
 
@@ -114,9 +114,10 @@ const plus=(d,n)=>{let x=new Date(d);x.setDate(x.getDate()+n);return x};
 const monthlyLoan=(price)=>{const r=.0514/12,n=180;return price*r/(1-Math.pow(1+r,-n))};
 function svgLine(pts,W,H,min,max){let L=80,R=25,T=35,B=50,xx=i=>L+(W-L-R)*i/(pts.length-1),yy=v=>T+(H-T-B)*(1-(v-min)/Math.max(1,max-min));return {line:pts.map((v,i)=>`${i?'L':'M'}${xx(i).toFixed(1)},${yy(v).toFixed(1)}`).join(' '),xx,yy}}
 function update(){
- const raw=$('energy').value,valid=raw.trim()!==''&&Number(raw)>0&&$('subscription').value!=='';
- $('showSimulation').disabled=!valid;
- const monthly=Number(raw)||0,p=products[Number($('pac').value)],loan=p.monthly,subscription=Number($('subscription').value)||0,credit=loan+subscription,effort=credit-monthly,reportSavings=monthly*6,now=new Date();now.setHours(12,0,0,0);
+ const raw=$('energy').value,valid=raw.trim()!==''&&Number(raw.replace(',', '.'))>0&&$('subscription').value!=='';
+ // Le bouton reste cliquable ; la validation s’effectue au clic pour éviter le symbole interdit.
+ $('showSimulation').disabled=false;
+ const monthly=Number(raw.replace(',', '.'))||0,p=products[Number($('pac').value)],loan=p.monthly,subscription=Number($('subscription').value)||0,credit=loan+subscription,effort=credit-monthly,reportSavings=monthly*6,now=new Date();now.setHours(12,0,0,0);
  $('annual').textContent=document.querySelector('.sheet').classList.contains('ready')?eur(monthly*11):'';
  $('aid').textContent='6 mois sans mensualités';$('before').textContent=eur(credit);$('after').textContent=eur(credit);
  $('d0').textContent=fmt(now);$('d20').textContent=fmt(plus(now,20));$('d180').textContent=fmt(plus(now,200));$('d230').textContent=fmt(plus(now,230));
@@ -131,8 +132,4 @@ function update(){
    for(let m=0;m<12;m++){
      const used=effort>0?Math.min(effort,reserve):0;
      reserve=Math.max(0,reserve-used);
-     paid+=credit-used;
-   }
-   return paid/12;
- });
- const W=1050,H=290,max=Math.max(...graphEnergy,...graphCredit)*1.15+1,eg=svgLine(gra
+     paid+=cre
