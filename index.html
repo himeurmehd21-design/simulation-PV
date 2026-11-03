@@ -132,4 +132,67 @@ function update(){
    for(let m=0;m<12;m++){
      const used=effort>0?Math.min(effort,reserve):0;
      reserve=Math.max(0,reserve-used);
-     paid+=cre
+     paid+=credit-used;
+   }
+   return paid/12;
+ });
+ const W=1050,H=290,max=Math.max(...graphEnergy,...graphCredit)*1.15+1,eg=svgLine(graphEnergy,W,H,0,max),cg=svgLine(graphCredit,W,H,0,max);
+ let es=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des mensualités avec échelle en euros sur l’axe vertical">`;
+ const ticks=5;
+ for(let j=0;j<=ticks;j++){
+   const value=max*j/ticks,y=eg.yy(value);
+   es+=`<line x1="80" y1="${y}" x2="${W-25}" y2="${y}" stroke="#dce3e9" stroke-width="1"/><text x="69" y="${y+5}" text-anchor="end" font-size="13" fill="#111">${Math.round(value).toLocaleString('fr-FR')} €</text>`;
+ }
+ es+=`<path d="${eg.line}" fill="none" stroke="#df8a36" stroke-width="4"/><path d="${cg.line}" fill="none" stroke="#197ca9" stroke-width="4"/>`;
+ for(let i=0;i<15;i++)es+=`<text x="${eg.xx(i)}" y="${H-15}" text-anchor="middle" font-size="13" fill="#111">${2027+i}</text>`;
+ es+=`</svg><div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#111"><span><b style="color:#df8a36">━</b> Mensualité fournisseur d’électricité</span><span><b style="color:#197ca9">━</b> Crédit + abonnement après prise en charge de l’effort par les économies des 6 mois</span></div>`;
+ es+=`<p class="note" style="text-align:center;margin:10px 0 0">Courbe bleue : moyenne mensuelle par année, après utilisation des économies des 6 mois pour couvrir l’effort. Une fois la réserve épuisée, le montant redevient crédit + abonnement. Cette prise en charge est une simulation de budget, pas une réduction des prélèvements du prêteur.</p>`;
+ $('energychart').innerHTML=es;
+ const energy=Array.from({length:15},(_,i)=>monthly*Math.pow(1.1,i));
+ let totalEnergy=0,totalCredit=0,html='';for(let i=0;i<15;i++){let e=energy[i]*11,c=credit*12;totalEnergy+=e;totalCredit+=c;html+=`<tr><td>${2026+i}</td><td>${eur(e)}</td><td>${eur(c)}</td></tr>`}
+ $('annualrows').innerHTML=html;$('totalrow').innerHTML=`<tr style="font-weight:bold;background:#e8f2f8"><td>TOTAL 15 ANS</td><td>${eur(totalEnergy)}</td><td>${eur(totalCredit)}</td></tr>`;
+ $('without').textContent=eur(totalEnergy);$('with').textContent=eur(totalCredit);$('difference').textContent=eur(totalEnergy-totalCredit);
+}
+function reveal(){
+ const raw=$('energy').value.trim().replace(',', '.');
+ if(!(Number(raw)>0)){alert('Veuillez renseigner une mensualité énergies supérieure à 0 €.');$('energy').focus();return;}
+ if(!$('subscription').value){alert('Veuillez choisir un abonnement MyLight.');$('subscription').focus();return;}
+ try {
+   update();
+   document.querySelector('.sheet').classList.add('ready');
+   $('annual').textContent=eur(Number(raw)*11);
+   document.querySelectorAll('.deferred').forEach(el=>el.classList.remove('deferred-hidden'));
+   $('results').className='results-visible';
+   $('exportActions').style.display='flex';
+   $('showSimulation').disabled=false;
+   $('showSimulation').textContent='Actualiser la simulation';
+ } catch(error) {
+   console.error('Erreur affichage simulation',error);
+   alert('Une erreur empêche l’affichage. Actualisez la page et réessayez.');
+ }
+}
+function prepareExport(){
+ if(!$('results').classList.contains('results-visible')){alert('Affichez d’abord la simulation complète.');return false;}
+ update();return true;
+}
+$('printSimulation').addEventListener('click',()=>{if(prepareExport())window.print()});
+$('downloadSimulation').addEventListener('click',()=>{
+ if(!prepareExport())return;
+ const doc=document.documentElement.cloneNode(true);
+ const sourceInput=$('energy'),cloneInput=doc.querySelector('#energy');
+ cloneInput.setAttribute('value',sourceInput.value);
+ for(const id of ['subscription','pac']){
+   const value=$(id).value,cloneSelect=doc.querySelector('#'+id);
+   cloneSelect.querySelectorAll('option').forEach(o=>{if(o.value===value)o.setAttribute('selected','selected');else o.removeAttribute('selected')});
+ }
+ doc.querySelector('#exportActions')?.remove();doc.querySelector('.actions')?.remove();
+ doc.querySelectorAll('script').forEach(el=>el.remove());
+ doc.querySelector('#results').className='results-visible';
+ doc.querySelector('.sheet').classList.add('ready');
+ doc.querySelectorAll('.deferred').forEach(el=>el.classList.remove('deferred-hidden'));
+ const html='<!DOCTYPE html>\n'+doc.outerHTML;
+ const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+ const link=document.createElement('a');link.href=url;link.download='Simulation_PV_Free_Energie.html';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+});
+$('showSimulation').addEventListener('click',reveal);['energy','pac','subscription'].forEach(id=>{ $(id).addEventListener('input',update);$(id).addEventListener('change',update); });update();
+</script></body></html>
